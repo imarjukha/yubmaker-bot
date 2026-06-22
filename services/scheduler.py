@@ -33,8 +33,8 @@ async def start_scheduler(bot: Bot):
     scheduler.add_job(
         send_weekly_reports,
         "cron",
-        day_of_week="fri",
-        hour=18,
+        day_of_week="mon",
+        hour=5,
         minute=0,
         args=[bot]
     )
