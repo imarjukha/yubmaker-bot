@@ -11,8 +11,27 @@ CLICKUP_LIST_ID = os.getenv("CLICKUP_LIST_ID", "901217527946")  # DCT Operations
 # Telegram user_id → ClickUp user_id
 # Заполни после того как узнаешь Telegram ID каждого сотрудника
 TEAM_MAP = {
-    # "telegram_username": clickup_user_id
-    # Пример: "anna_smirnova": 99761883
+    TEAM_MAP = {
+    "Zelemash": 99761884,
+    "heyannett": 99761883,
+    "volgatheocean": 99763886,
+    "westcost777": 99761882,
+    "rinaa_k": 99844168,
+    "Asti_Kh": 99761885,
+    "z_polli": 99761939,
+    "panchenko_tv": 99763894,
+}
+
+CLICKUP_TO_TELEGRAM = {
+    99761884: "Zelemash",
+    99761883: "heyannett",
+    99763886: "volgatheocean",
+    99761882: "westcost777",
+    99844168: "rinaa_k",
+    99761885: "Asti_Kh",
+    99761939: "z_polli",
+    99763894: "panchenko_tv",
+}
 }
 
 # ClickUp user_id → Telegram username (для личных сообщений)

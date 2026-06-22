@@ -8,7 +8,7 @@ from services.clickup_service import add_task_comment
 logger = logging.getLogger(__name__)
 
 # Менеджер которому идут алерты о плохом фидбэке
-MANAGER_USERNAME = "manager_username"  # замени на реальный username
+MANAGER_USERNAME = "ivanmaryukha"
 
 
 async def handle_feedback_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
