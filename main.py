@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 async def debug_all(update, context):
-    logger.info(f"ПОЛУЧЕНО СООБЩЕНИЕ: chat_type={update.message.chat.type} text={update.message.text}")
+    if update.message: logger.info(f"ПОЛУЧЕНО: chat_type={update.message.chat.type} text={update.message.text}")
 
 
 async def post_init(application):

@@ -1,3 +1,4 @@
+from typing import Optional
 import logging
 from datetime import datetime, timedelta
 from telegram import Bot
