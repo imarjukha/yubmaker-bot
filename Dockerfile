@@ -9,4 +9,6 @@ COPY . .
 
 RUN mkdir -p data
 
-CMD ["python", "main.py"]
+ENV PYTHONUNBUFFERED=1
+
+CMD ["python", "-u", "main.py"]
