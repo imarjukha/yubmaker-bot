@@ -48,6 +48,34 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
 
     assignee_username = task_data.get("assignee_username")
 
+    # Если упомянуто несколько пользователей — спрашиваем как назначить
+    if len(mentioned_users) > 1:
+        usernames_str = ", ".join([f"@{u}" for u in mentioned_users])
+        keyboard = [
+            [InlineKeyboardButton(f"👥 Назначить всем одну задачу", callback_data=f"multi_all:{message.message_id}")],
+            [InlineKeyboardButton(f"📋 Каждому по отдельной задаче", callback_data=f"multi_each:{message.message_id}")],
+            [InlineKeyboardButton(f"👤 Только одному (выбрать)", callback_data=f"multi_one:{message.message_id}")],
+            [InlineKeyboardButton("❌ Это не задача", callback_data=f"multi_cancel:{message.message_id}")],
+        ]
+        bot_msg = await message.reply_text(
+            f"📋 Обнаружена задача: *{task_data['name']}*\n"
+            f"Упомянуты: {usernames_str}\n\nКак назначить?",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+        # Сохраняем pending без создания задачи в ClickUp
+        save_pending_assignment(bot_msg.message_id, {
+            "task_name": task_data["name"],
+            "task_description": task_data.get("description", ""),
+            "priority": task_data.get("priority", "normal"),
+            "is_structured": task_data.get("has_subtasks", False),
+            "subtasks": task_data.get("subtasks", []),
+            "mentioned_users": mentioned_users,
+            "group_chat_id": message.chat_id,
+            "task_data": task_data,
+        })
+        return
+
     # Создаём задачу в ClickUp
     clickup_task = await create_task(
         name=task_data["name"],
@@ -132,6 +160,126 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     data = query.data
+    if data.startswith("multi_cancel:"):
+        original_msg_id = int(data.split(":")[1])
+        remove_pending_assignment(original_msg_id)
+        await query.edit_message_text("❌ Понял, не задача. Сообщение проигнорировано.")
+        return
+
+    if data.startswith("multi_all:"):
+        original_msg_id = int(data.split(":")[1])
+        pending = get_pending_assignment(original_msg_id)
+        if not pending:
+            await query.edit_message_text("⚠️ Сессия устарела.")
+            return
+        mentioned = pending["mentioned_users"]
+        clickup_ids = [TEAM_MAP[u] for u in mentioned if u in TEAM_MAP]
+        # Создаём одну задачу со всеми исполнителями
+        import httpx as _httpx
+        from config import CLICKUP_API_TOKEN as _TOKEN, CLICKUP_LIST_ID as _LIST_ID
+        priority_map = {"urgent": 1, "high": 2, "normal": 3, "low": 4}
+        payload = {
+            "name": pending["task_name"],
+            "description": pending["task_description"],
+            "priority": priority_map.get(pending.get("priority", "normal"), 3),
+            "assignees": clickup_ids,
+        }
+        async with _httpx.AsyncClient() as client:
+            resp = await client.post(f"https://api.clickup.com/api/v2/list/{_LIST_ID}/task",
+                headers={"Authorization": _TOKEN, "Content-Type": "application/json"}, json=payload)
+            task = resp.json()
+        task_id = task["id"]
+        task_url = task.get("url", "")
+        usernames_str = ", ".join([f"@{u}" for u in mentioned])
+        await query.edit_message_text(
+            f"✅ Задача создана в ClickUp\n📋 *{pending['task_name']}*\n👥 Исполнители: {usernames_str}\n🔗 {task_url}",
+            parse_mode="Markdown"
+        )
+        for u in mentioned:
+            save_active_task(f"{task_id}_{u}", {**pending, "assignee_username": u, "clickup_url": task_url, "task_id": task_id})
+        remove_pending_assignment(original_msg_id)
+        return
+
+    if data.startswith("multi_each:"):
+        original_msg_id = int(data.split(":")[1])
+        pending = get_pending_assignment(original_msg_id)
+        if not pending:
+            await query.edit_message_text("⚠️ Сессия устарела.")
+            return
+        mentioned = pending["mentioned_users"]
+        import httpx as _httpx
+        from config import CLICKUP_API_TOKEN as _TOKEN, CLICKUP_LIST_ID as _LIST_ID
+        priority_map = {"urgent": 1, "high": 2, "normal": 3, "low": 4}
+        created = []
+        async with _httpx.AsyncClient() as client:
+            for u in mentioned:
+                clickup_id = TEAM_MAP.get(u)
+                payload = {
+                    "name": pending["task_name"],
+                    "description": pending["task_description"],
+                    "priority": priority_map.get(pending.get("priority", "normal"), 3),
+                    "assignees": [clickup_id] if clickup_id else [],
+                }
+                resp = await client.post(f"https://api.clickup.com/api/v2/list/{_LIST_ID}/task",
+                    headers={"Authorization": _TOKEN, "Content-Type": "application/json"}, json=payload)
+                task = resp.json()
+                created.append((u, task["id"], task.get("url", "")))
+                save_active_task(task["id"], {**pending, "assignee_username": u, "clickup_url": task.get("url", "")})
+        tasks_text = "\n".join([f"👤 @{u} → {url}" for u, tid, url in created])
+        await query.edit_message_text(
+            f"✅ Созданы отдельные задачи:\n📋 *{pending['task_name']}*\n{tasks_text}",
+            parse_mode="Markdown"
+        )
+        remove_pending_assignment(original_msg_id)
+        return
+
+    if data.startswith("multi_one:"):
+        original_msg_id = int(data.split(":")[1])
+        pending = get_pending_assignment(original_msg_id)
+        if not pending:
+            await query.edit_message_text("⚠️ Сессия устарела.")
+            return
+        # Показываем выбор из упомянутых
+        mentioned = pending["mentioned_users"]
+        keyboard = [[InlineKeyboardButton(f"@{u}", callback_data=f"multi_pick:{original_msg_id}:{u}")] for u in mentioned]
+        keyboard.append([InlineKeyboardButton("❌ Отмена", callback_data=f"multi_cancel:{original_msg_id}")])
+        await query.edit_message_text(
+            f"👤 Кому назначить задачу *{pending['task_name']}*?",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+        return
+
+    if data.startswith("multi_pick:"):
+        _, original_msg_id, username = data.split(":", 2)
+        original_msg_id = int(original_msg_id)
+        pending = get_pending_assignment(original_msg_id)
+        if not pending:
+            await query.edit_message_text("⚠️ Сессия устарела.")
+            return
+        import httpx as _httpx
+        from config import CLICKUP_API_TOKEN as _TOKEN, CLICKUP_LIST_ID as _LIST_ID
+        priority_map = {"urgent": 1, "high": 2, "normal": 3, "low": 4}
+        clickup_id = TEAM_MAP.get(username)
+        payload = {
+            "name": pending["task_name"],
+            "description": pending["task_description"],
+            "priority": priority_map.get(pending.get("priority", "normal"), 3),
+            "assignees": [clickup_id] if clickup_id else [],
+        }
+        async with _httpx.AsyncClient() as client:
+            resp = await client.post(f"https://api.clickup.com/api/v2/list/{_LIST_ID}/task",
+                headers={"Authorization": _TOKEN, "Content-Type": "application/json"}, json=payload)
+            task = resp.json()
+        task_url = task.get("url", "")
+        await query.edit_message_text(
+            f"✅ Задача создана в ClickUp\n📋 *{pending['task_name']}*\n👤 Исполнитель: @{username}\n🔗 {task_url}",
+            parse_mode="Markdown"
+        )
+        save_active_task(task["id"], {**pending, "assignee_username": username, "clickup_url": task_url})
+        remove_pending_assignment(original_msg_id)
+        return
+
     if data.startswith("not_task:"):
         parts = data.split(":")
         task_id = parts[1]
