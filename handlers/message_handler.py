@@ -63,8 +63,8 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode="Markdown"
         )
-        # Сохраняем pending без создания задачи в ClickUp
-        save_pending_assignment(bot_msg.message_id, {
+        # Сохраняем pending по message.message_id (тот же что в callback_data)
+        save_pending_assignment(message.message_id, {
             "task_name": task_data["name"],
             "task_description": task_data.get("description", ""),
             "priority": task_data.get("priority", "normal"),
