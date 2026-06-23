@@ -100,6 +100,9 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         if row:
             keyboard.append(row)
 
+        reply_markup = InlineKeyboardMarkup(keyboard)  # временно, обновим после
+
+        keyboard.append([InlineKeyboardButton("❌ Это не задача", callback_data=f"not_task:{task_id}:0")])
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         bot_msg = await message.reply_text(
@@ -107,6 +110,9 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
+        # Обновляем кнопку с реальным message_id
+        keyboard[-1] = [InlineKeyboardButton("❌ Это не задача", callback_data=f"not_task:{task_id}:{bot_msg.message_id}")]
+        await bot_msg.edit_reply_markup(InlineKeyboardMarkup(keyboard))
 
         # Сохраняем данные задачи для callback
         save_pending_assignment(bot_msg.message_id, {
@@ -126,6 +132,21 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     data = query.data
+    if data.startswith("not_task:"):
+        parts = data.split(":")
+        task_id = parts[1]
+        original_msg_id = parts[2]
+        import httpx as _httpx
+        from config import CLICKUP_API_TOKEN as _TOKEN
+        async with _httpx.AsyncClient() as client:
+            await client.delete(
+                f"https://api.clickup.com/api/v2/task/{task_id}",
+                headers={"Authorization": _TOKEN, "Content-Type": "application/json"}
+            )
+        remove_pending_assignment(int(original_msg_id))
+        await query.edit_message_text("❌ Понял, не задача. Сообщение проигнорировано.")
+        return
+
     if data.startswith("assign:"):
         _, task_id, username, original_msg_id = data.split(":")
         pending = get_pending_assignment(int(original_msg_id))
