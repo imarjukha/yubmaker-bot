@@ -35,3 +35,5 @@ FEEDBACK_SCHEDULE = {
     "medium": {"max_days": 14, "checkpoints": [0.5]},
     "long": {"max_days": None, "checkpoints_every": 5},
 }
+
+# redeploy 2026-06-25T18:03:53.817028
