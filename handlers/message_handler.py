@@ -12,14 +12,14 @@ logger = logging.getLogger(__name__)
 
 # Все члены команды для кнопок выбора исполнителя
 TEAM_MEMBERS = [
-    ("Анна Смирнова", "anna_smirnova"),
-    ("Ольга Юрьева", "olga_yureva"),
-    ("Екатерина", "kataz0601"),
-    ("Мария Зеленова", "maria_zelenova"),
-    ("Никита Акимушкин", "nikita_akimushkin"),
-    ("Полина Заботина", "polina_zabotina"),
-    ("Тамара Панченко", "tamara_panchenko"),
-    ("Астемир Русланович", "astemir"),
+    ("Анна Смирнова", "heyannett"),
+    ("Ольга Юрьева", "volgatheocean"),
+    ("Екатерина", "rinaa_k"),
+    ("Мария Зеленова", "zelemash"),
+    ("Никита Акимушкин", "westcost777"),
+    ("Полина Заботина", "z_polli"),
+    ("Тамара Панченко", "panchenko_tv"),
+    ("Астемир Русланович", "asti_kh"),
 ]
 
 
