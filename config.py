@@ -14,7 +14,6 @@ TEAM_MAP = {
     "volgatheocean": 99763886,
     "westcost777": 99761882,
     "rinaa_k": 99844168,
-    "asti_kh": 99761885,
     "z_polli": 99761939,
     "panchenko_tv": 99763894,
 }
@@ -25,7 +24,6 @@ CLICKUP_TO_TELEGRAM = {
     99763886: "volgatheocean",
     99761882: "westcost777",
     99844168: "rinaa_k",
-    99761885: "asti_kh",
     99761939: "z_polli",
     99763894: "panchenko_tv",
 }
