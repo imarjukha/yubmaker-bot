@@ -33,7 +33,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     if message.entities:
         for entity in message.entities:
             if entity.type == "mention":
-                username = message.text[entity.offset + 1:entity.offset + entity.length]
+                username = message.text[entity.offset + 1:entity.offset + entity.length].lower()
                 mentioned_users.append(username)
 
     sender_name = message.from_user.full_name
