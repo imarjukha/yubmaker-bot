@@ -6,6 +6,7 @@ from services.clickup_service import create_task, update_task_assignee
 from services.storage import save_pending_assignment, get_pending_assignment, remove_pending_assignment, save_active_task
 from utils.feedback_scheduler import schedule_feedback
 from services.config_manager import get_team_map, get_clickup_to_telegram
+from config import TEAM_MAP, CLICKUP_TO_TELEGRAM
 import json
 
 logger = logging.getLogger(__name__)
@@ -103,7 +104,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         # Исполнитель известен
         await message.reply_text(
             f"✅ Задача создана в ClickUp\n"
-            f"📋 *{task_data['name']}*\n"
+            f"📋 {task_data['name']}\n"
             f"👤 Исполнитель: @{assignee_username}\n"
             f"🔗 {task_url}",
             
