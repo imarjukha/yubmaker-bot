@@ -39,7 +39,7 @@ try:
     app.add_handler(CommandHandler("adduser", cmd_adduser))
     app.add_handler(CommandHandler("removeuser", cmd_removeuser))
     app.add_handler(CommandHandler("listusers", cmd_listusers))
-        logger.info("Бот запущен")
+    logger.info("Бот запущен")
         app.run_polling(drop_pending_updates=False)
 
     if __name__ == "__main__":
