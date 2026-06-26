@@ -68,7 +68,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
             f"📋 Обнаружена задача: *{task_data['name']}*\n"
             f"Упомянуты: {usernames_str}\n\nКак назначить?",
             reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="Markdown"
+            
         )
         # Сохраняем pending по message.message_id (тот же что в callback_data)
         save_pending_assignment(message.message_id, {
@@ -106,7 +106,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
             f"📋 *{task_data['name']}*\n"
             f"👤 Исполнитель: @{assignee_username}\n"
             f"🔗 {task_url}",
-            parse_mode="Markdown"
+            
         )
 
         # Сохраняем и планируем фидбэк
@@ -143,7 +143,7 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         bot_msg = await message.reply_text(
             f"📋 Обнаружена задача: *{task_data['name']}*\n\nКого назначить исполнителем?",
             reply_markup=reply_markup,
-            parse_mode="Markdown"
+            
         )
         # Обновляем кнопку с реальным message_id
         keyboard[-1] = [InlineKeyboardButton("❌ Это не задача", callback_data=f"not_task:{task_id}:{bot_msg.message_id}")]
@@ -200,7 +200,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         usernames_str = ", ".join([f"@{u}" for u in mentioned])
         await query.edit_message_text(
             f"✅ Задача создана в ClickUp\n📋 *{pending['task_name']}*\n👥 Исполнители: {usernames_str}\n🔗 {task_url}",
-            parse_mode="Markdown"
+            
         )
         for u in mentioned:
             save_active_task(f"{task_id}_{u}", {**pending, "assignee_username": u, "clickup_url": task_url, "task_id": task_id})
@@ -235,7 +235,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         tasks_text = "\n".join([f"👤 @{u} → {url}" for u, tid, url in created])
         await query.edit_message_text(
             f"✅ Созданы отдельные задачи:\n📋 *{pending['task_name']}*\n{tasks_text}",
-            parse_mode="Markdown"
+            
         )
         remove_pending_assignment(original_msg_id)
         return
@@ -253,7 +253,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             f"👤 Кому назначить задачу *{pending['task_name']}*?",
             reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="Markdown"
+            
         )
         return
 
@@ -281,7 +281,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         task_url = task.get("url", "")
         await query.edit_message_text(
             f"✅ Задача создана в ClickUp\n📋 *{pending['task_name']}*\n👤 Исполнитель: @{username}\n🔗 {task_url}",
-            parse_mode="Markdown"
+            
         )
         save_active_task(task["id"], {**pending, "assignee_username": username, "clickup_url": task_url})
         remove_pending_assignment(original_msg_id)
@@ -331,7 +331,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"📋 *{pending['task_name']}*\n"
             f"👤 Исполнитель: {display_name}\n"
             f"🔗 {pending.get('clickup_url', '')}",
-            parse_mode="Markdown"
+            
         )
 
         # Планируем фидбэк
