@@ -10,9 +10,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 try:
-    from telegram.ext import Application, MessageHandler, filters, CallbackQueryHandler
+    from telegram.ext import Application, MessageHandler, CommandHandler, filters, CallbackQueryHandler
     from handlers.message_handler import handle_group_message, handle_callback
     from handlers.feedback_handler import handle_feedback_response
+    from handlers.admin_handler import cmd_adduser, cmd_removeuser, cmd_listusers
     from services.scheduler import start_scheduler
     from config import TELEGRAM_TOKEN
 
@@ -35,6 +36,9 @@ try:
             handle_feedback_response
         ), group=1)
         app.add_handler(CallbackQueryHandler(handle_callback))
+    app.add_handler(CommandHandler("adduser", cmd_adduser))
+    app.add_handler(CommandHandler("removeuser", cmd_removeuser))
+    app.add_handler(CommandHandler("listusers", cmd_listusers))
         logger.info("Бот запущен")
         app.run_polling(drop_pending_updates=False)
 
