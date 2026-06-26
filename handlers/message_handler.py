@@ -124,33 +124,32 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
         })
         await schedule_feedback(task_id, assignee_username, due_date, context)
 
+
     else:
-        # Исполнитель не определён — просим выбрать
         keyboard = []
-        row = []
-        for i, (name, username) in enumerate(TEAM_MEMBERS):
-            row.append(InlineKeyboardButton(name, callback_data=f"assign:{task_id}:{username}:{message.message_id}"))
-            if len(row) == 2:
-                keyboard.append(row)
-                row = []
-        if row:
-            keyboard.append(row)
-
-        reply_markup = InlineKeyboardMarkup(keyboard)  # временно, обновим после
-
-        keyboard.append([InlineKeyboardButton("❌ Это не задача", callback_data=f"not_task:{task_id}:0")])
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        for name, username in TEAM_MEMBERS:
+            keyboard.append([InlineKeyboardButton(
+                "◻️ " + name,
+                callback_data="toggle:" + task_id + ":0:" + username
+            )])
+        keyboard.append([InlineKeyboardButton("✅ Назначить выбранных", callback_data="assign_selected:" + task_id + ":0")])
+        keyboard.append([InlineKeyboardButton("❌ Это не задача", callback_data="not_task:" + task_id + ":0")])
 
         bot_msg = await message.reply_text(
-            f"📋 Обнаружена задача: *{task_data['name']}*\n\nКого назначить исполнителем?",
-            reply_markup=reply_markup,
-            
+            "Обнаружена задача: " + task_data["name"] + "\n\nВыбери исполнителей:",
+            reply_markup=InlineKeyboardMarkup(keyboard),
         )
-        # Обновляем кнопку с реальным message_id
-        keyboard[-1] = [InlineKeyboardButton("❌ Это не задача", callback_data=f"not_task:{task_id}:{bot_msg.message_id}")]
-        await bot_msg.edit_reply_markup(InlineKeyboardMarkup(keyboard))
 
-        # Сохраняем данные задачи для callback
+        keyboard2 = []
+        for name, username in TEAM_MEMBERS:
+            keyboard2.append([InlineKeyboardButton(
+                "◻️ " + name,
+                callback_data="toggle:" + task_id + ":" + str(bot_msg.message_id) + ":" + username
+            )])
+        keyboard2.append([InlineKeyboardButton("✅ Назначить выбранных", callback_data="assign_selected:" + task_id + ":" + str(bot_msg.message_id))])
+        keyboard2.append([InlineKeyboardButton("❌ Это не задача", callback_data="not_task:" + task_id + ":" + str(bot_msg.message_id))])
+        await bot_msg.edit_reply_markup(InlineKeyboardMarkup(keyboard2))
+
         save_pending_assignment(bot_msg.message_id, {
             "task_id": task_id,
             "task_name": task_data["name"],
@@ -160,7 +159,9 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
             "due_date": clickup_task.get("due_date"),
             "clickup_url": task_url,
             "group_chat_id": message.chat_id,
+            "selected_users": [],
         })
+
 
 
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -286,6 +287,69 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         save_active_task(task["id"], {**pending, "assignee_username": username, "clickup_url": task_url})
         remove_pending_assignment(original_msg_id)
+        return
+
+    if data.startswith("toggle:"):
+        parts = data.split(":")
+        task_id = parts[1]
+        msg_id = int(parts[2])
+        username = parts[3]
+        pending = get_pending_assignment(msg_id)
+        if not pending:
+            await query.answer("\u0421\u0435\u0441\u0441\u0438\u044f \u0443\u0441\u0442\u0430\u0440\u0435\u043b\u0430")
+            return
+        selected = pending.get("selected_users", [])
+        if username in selected:
+            selected.remove(username)
+        else:
+            selected.append(username)
+        pending["selected_users"] = selected
+        save_pending_assignment(msg_id, pending)
+        keyboard = []
+        for name, uname in TEAM_MEMBERS:
+            mark = "\u2705" if uname in selected else "\u25fb\ufe0f"
+            keyboard.append([InlineKeyboardButton(
+                mark + " " + name,
+                callback_data="toggle:" + task_id + ":" + str(msg_id) + ":" + uname
+            )])
+        count = len(selected)
+        btn_label = "\u2705 \u041d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445 (" + str(count) + ")" if count > 0 else "\u2705 \u041d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u044b\u0445"
+        keyboard.append([InlineKeyboardButton(btn_label, callback_data="assign_selected:" + task_id + ":" + str(msg_id))])
+        keyboard.append([InlineKeyboardButton("\u274c \u042d\u0442\u043e \u043d\u0435 \u0437\u0430\u0434\u0430\u0447\u0430", callback_data="not_task:" + task_id + ":" + str(msg_id))])
+        await query.edit_message_reply_markup(InlineKeyboardMarkup(keyboard))
+        await query.answer()
+        return
+
+    if data.startswith("assign_selected:"):
+        parts = data.split(":")
+        task_id = parts[1]
+        msg_id = int(parts[2])
+        pending = get_pending_assignment(msg_id)
+        if not pending:
+            await query.edit_message_text("\u0421\u0435\u0441\u0441\u0438\u044f \u0443\u0441\u0442\u0430\u0440\u0435\u043b\u0430.")
+            return
+        selected = pending.get("selected_users", [])
+        if not selected:
+            await query.answer("\u0412\u044b\u0431\u0435\u0440\u0438 \u0445\u043e\u0442\u044f \u0431\u044b \u043e\u0434\u043d\u043e\u0433\u043e!")
+            return
+        import httpx as _httpx
+        from config import CLICKUP_API_TOKEN as _TOKEN
+        team = get_team_map()
+        clickup_ids = [team[u] for u in selected if u in team]
+        async with _httpx.AsyncClient() as client:
+            await client.put(
+                "https://api.clickup.com/api/v2/task/" + task_id,
+                headers={"Authorization": _TOKEN, "Content-Type": "application/json"},
+                json={"assignees": {"add": clickup_ids, "rem": []}}
+            )
+        names = ", ".join([name for name, u in TEAM_MEMBERS if u in selected])
+        task_url = pending.get("clickup_url", "")
+        await query.edit_message_text(
+            "\u2705 \u0417\u0430\u0434\u0430\u0447\u0430 \u0441\u043e\u0437\u0434\u0430\u043d\u0430 \u0432 ClickUp\n" + pending["task_name"] + "\n\u0418\u0441\u043f\u043e\u043b\u043d\u0438\u0442\u0435\u043b\u0438: " + names + "\n" + task_url
+        )
+        for u in selected:
+            save_active_task(task_id + "_" + u, dict(pending, assignee_username=u))
+        remove_pending_assignment(msg_id)
         return
 
     if data.startswith("not_task:"):
