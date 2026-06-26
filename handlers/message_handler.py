@@ -28,19 +28,20 @@ async def handle_group_message(update: Update, context: ContextTypes.DEFAULT_TYP
     if not message or not message.text:
         return
 
-    # Извлекаем упомянутых пользователей из entities
+    # Извлекаем упомянутых пользователей — из entities И из текста напрямую
+    import re
     mentioned_users = []
     if message.entities:
         for entity in message.entities:
             if entity.type == "mention":
                 username = message.text[entity.offset + 1:entity.offset + entity.length].lower()
-                mentioned_users.append(username)
-
-    # Если entities не нашли упоминаний — ищем @username в тексте напрямую
-    if not mentioned_users:
-        import re
-        text_mentions = re.findall(r'@(\w+)', message.text)
-        mentioned_users = [u.lower() for u in text_mentions]
+                if username not in mentioned_users:
+                    mentioned_users.append(username)
+    # Дополнительно парсим текст — ловим тех у кого закрыты упоминания
+    text_mentions = re.findall(r'@(\w+)', message.text)
+    for u in text_mentions:
+        if u.lower() not in mentioned_users:
+            mentioned_users.append(u.lower())
 
     sender_name = message.from_user.full_name
 
