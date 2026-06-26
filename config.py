@@ -16,6 +16,7 @@ TEAM_MAP = {
     "rinaa_k": 99844168,
     "z_polli": 99761939,
     "panchenko_tv": 99763894,
+    "asti_kh": 99761885,
 }
 
 CLICKUP_TO_TELEGRAM = {
@@ -26,6 +27,7 @@ CLICKUP_TO_TELEGRAM = {
     99844168: "rinaa_k",
     99761939: "z_polli",
     99763894: "panchenko_tv",
+    99761885: "asti_kh",
 }
 
 FEEDBACK_SCHEDULE = {
