@@ -5,7 +5,7 @@ from services.claude_service import detect_task
 from services.clickup_service import create_task, update_task_assignee
 from services.storage import save_pending_assignment, get_pending_assignment, remove_pending_assignment, save_active_task
 from utils.feedback_scheduler import schedule_feedback
-from config import TEAM_MAP, CLICKUP_TO_TELEGRAM
+from services.config_manager import get_team_map, get_clickup_to_telegram
 import json
 
 logger = logging.getLogger(__name__)
@@ -267,7 +267,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         import httpx as _httpx
         from config import CLICKUP_API_TOKEN as _TOKEN, CLICKUP_LIST_ID as _LIST_ID
         priority_map = {"urgent": 1, "high": 2, "normal": 3, "low": 4}
-        clickup_id = TEAM_MAP.get(username)
+        clickup_id = get_team_map().get(username)
         payload = {
             "name": pending["task_name"],
             "description": pending["task_description"],
@@ -311,7 +311,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         # Назначаем в ClickUp
-        clickup_user_id = TEAM_MAP.get(username)
+        clickup_user_id = get_team_map().get(username)
         if clickup_user_id:
             await update_task_assignee(task_id, clickup_user_id)
 
